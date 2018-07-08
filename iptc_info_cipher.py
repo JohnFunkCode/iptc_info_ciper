@@ -1,5 +1,11 @@
 from iptcinfo import IPTCInfo
 import fire
+import base64
+import os
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 class IPTCInfoCipher:
     """
@@ -9,8 +15,7 @@ class IPTCInfoCipher:
     To see more detailed help run IPTCInfoTools <command> --help
     """
     def __init__(self):
-        self._password = b"31EAC3A1F3079064"  #default password used for testing
-        self._salt = b"16321B5A750850C7"      #application specific salt for mixing with password
+        self._salt = b"16321B5A750850C7"      #application specific salt for mixing with password - better to pass it in, but for now this will do
 
     def print_iptcinfo(self,filename):
         """
@@ -68,7 +73,7 @@ class IPTCInfoCipher:
         info = IPTCInfo(filename)
         if len(info.data) < 4: raise Exception(info.error)
         token = info.data['special instructions']
-        s = self._fermet_decrypt(token)
+        s = self._fermet_decrypt(token,password)
         items = eval(s)
         return items
 
@@ -93,22 +98,14 @@ class IPTCInfoCipher:
         :param items: list of items to be written (specified using Python list syntax)
         :return: none
         """
-        self._password=password
         info = IPTCInfo(filename)
         if len(info.data) < 4: raise Exception(info.error)
-        token = self._fernet_encrypt(str(items))
+        token = self._fernet_encrypt(str(items),password)
         info.data['caption/abstract']='Contains Special Instructions'
         info.data['special instructions']=token
         info.save()
 
-    def _fernet_encrypt(self, s):
-        import base64
-        import os
-        from cryptography.fernet import Fernet
-        from cryptography.hazmat.backends import default_backend
-        from cryptography.hazmat.primitives import hashes
-        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-
+    def _fernet_encrypt(self, s, password):
         kdf = PBKDF2HMAC(
             algorithm = hashes.SHA256(),
             length = 32,
@@ -117,23 +114,14 @@ class IPTCInfoCipher:
             backend = default_backend()
         )
 
-        key = base64.urlsafe_b64encode(kdf.derive(self._password))
+        key = base64.urlsafe_b64encode(kdf.derive(password))
         f = Fernet(key)
         token = f.encrypt(s)
         s1 = f.decrypt(token)
         assert(s==s1)
         return token
 
-    def  _fermet_decrypt(self, token):
-        import base64
-        import os
-        from cryptography.fernet import Fernet
-        from cryptography.hazmat.backends import default_backend
-        from cryptography.hazmat.primitives import hashes
-        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-
-
-
+    def  _fermet_decrypt(self, token, password):
         kdf = PBKDF2HMAC(
             algorithm = hashes.SHA256(),
             length = 32,
@@ -142,7 +130,7 @@ class IPTCInfoCipher:
             backend = default_backend()
         )
 
-        key = base64.urlsafe_b64encode(kdf.derive(self._password))
+        key = base64.urlsafe_b64encode(kdf.derive(password))
         f = Fernet(key)
         s = f.decrypt(token)
         return s

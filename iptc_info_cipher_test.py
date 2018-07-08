@@ -9,8 +9,8 @@ class test_iptc_info_cipher(unittest.TestCase):
     def test_encrypt_decrypt(self):
         aIC = iptc_info_cipher.IPTCInfoCipher()
         input_string="Hello World"
-        token=aIC._fernet_encrypt(input_string)
-        output_string=aIC._fermet_decrypt(token)
+        token=aIC._fernet_encrypt(input_string,"password")
+        output_string=aIC._fermet_decrypt(token,"password")
         self.assertTrue(input_string==output_string)
 
     def test_print_iptcinfo(self):
