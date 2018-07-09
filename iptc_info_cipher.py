@@ -6,6 +6,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import wget
 
 class IPTCInfoCipher:
     """
@@ -59,8 +60,21 @@ class IPTCInfoCipher:
         info = IPTCInfo(filename)
         if len(info.data) < 4: raise Exception(info.error)
         s = info.data['special instructions']
-        items = eval(s)
+        items = eval(s)  # TBD - use another method to convert a string to a list for tighter security
         return items
+
+    def read_list_from_url(self, url):
+        """
+        Reads a list of data from the IPTC special_instructions field of a .JPG file at a specified URL
+        :param url: url to the .jpg
+        :return: list of items
+        """
+        file_name = wget.download(url)
+        #print("Wget downloaded {}:".format(file_name))
+        items = self.read_list_from_jpg(file_name)
+        os.remove(file_name)
+        return items
+
 
     def read_encrypted_list_from_jpg(self, filename, password):
         """
@@ -74,8 +88,22 @@ class IPTCInfoCipher:
         if len(info.data) < 4: raise Exception(info.error)
         token = info.data['special instructions']
         s = self._fermet_decrypt(token,password)
-        items = eval(s)
+        items = eval(s) # # TBD - use another method to convert a string to a list for tighter security
         return items
+
+    def read_encrypted_list_from_url(self, url, password):
+        """
+        Reads a list of data encrypted in the IPTC special_instructions field of a .JPG at the specified URL
+        :param url: url to the .jpg
+        :param  password: the password used for encryption
+        :return: list of items
+        """
+        file_name = wget.download(url)
+        #print("Wget downloaded {}:".format(file_name))
+        items = self.read_encrypted_list_from_jpg(file_name, password)
+        os.remove(file_name)
+        return items
+
 
     def write_list_to_jpg(self, filename, items):
         """
